@@ -175,7 +175,7 @@ public:
     ec_ = asio::error::would_block;
     this->get_service().get_io_service().reset();
     do this->get_service().get_io_service().run_one();
-    while (ec_ == asio::error::would_block);
+    while (ec_ == static_cast<asio::error_code>(asio::error::would_block)); // AMAZON_MOD_ONELINE vxworks
 
     return !ec_ ? this : 0;
   }
@@ -315,7 +315,7 @@ protected:
       ec_ = asio::error::would_block;
       this->get_service().get_io_service().reset();
       do this->get_service().get_io_service().run_one();
-      while (ec_ == asio::error::would_block);
+      while (ec_ == static_cast<asio::error_code>(asio::error::would_block)); // AMAZON_MOD_ONELINE vxworks
       if (ec_)
         return traits_type::eof();
 
@@ -355,7 +355,7 @@ protected:
         ec_ = asio::error::would_block;
         this->get_service().get_io_service().reset();
         do this->get_service().get_io_service().run_one();
-        while (ec_ == asio::error::would_block);
+        while (ec_ == static_cast<asio::error_code>(asio::error::would_block)); // AMAZON_MOD_ONELINE vxworks
         if (ec_)
           return traits_type::eof();
 
@@ -382,7 +382,7 @@ protected:
         ec_ = asio::error::would_block;
         this->get_service().get_io_service().reset();
         do this->get_service().get_io_service().run_one();
-        while (ec_ == asio::error::would_block);
+        while (ec_ == static_cast<asio::error_code>(asio::error::would_block)); // AMAZON_MOD_ONELINE vxworks
         if (ec_)
           return traits_type::eof();
 
@@ -468,7 +468,7 @@ private:
         ec_ = asio::error::would_block;
         this->get_service().get_io_service().reset();
         do this->get_service().get_io_service().run_one();
-        while (ec_ == asio::error::would_block);
+        while (ec_ == static_cast<asio::error_code>(asio::error::would_block)); // AMAZON_MOD_ONELINE vxworks
 
         ++i;
       }

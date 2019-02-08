@@ -57,7 +57,12 @@
 # include "asio/detail/old_win_sdk_compat.hpp"
 #else
 # include <sys/ioctl.h>
-# if !defined(__SYMBIAN32__)
+// AMAZON_MOD_BEGIN vxworks
+# if !defined(__SYMBIAN32__) && !defined(__VXWORKS__ )
+#  include <sys/poll.h>
+# endif
+# if (_WRS_VXWORKS_MAJOR > 6 )
+// AMAZON_MOD_END vxworks 
 #  include <sys/poll.h>
 # endif
 # include <sys/types.h>

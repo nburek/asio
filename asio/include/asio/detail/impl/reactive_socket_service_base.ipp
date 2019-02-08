@@ -242,8 +242,11 @@ void reactive_socket_service_base::start_connect_op(
   {
     if (socket_ops::connect(impl.socket_, addr, addrlen, op->ec_) != 0)
     {
-      if (op->ec_ == asio::error::in_progress
-          || op->ec_ == asio::error::would_block)
+      // AMAZON_MOD_BEGIN vxworks
+      //static_cast for gcc 4.8.4
+      if (op->ec_ == static_cast<asio::error_code>(asio::error::in_progress)
+          || op->ec_ == static_cast<asio::error_code>(asio::error::would_block))
+      // AMAZON_MOD_END vxworks
       {
         op->ec_ = asio::error_code();
         reactor_.start_op(reactor::connect_op, impl.socket_,

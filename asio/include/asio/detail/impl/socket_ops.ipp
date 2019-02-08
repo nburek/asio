@@ -33,6 +33,19 @@
 # include <string>
 #endif // defined(ASIO_WINDOWS_RUNTIME)
 
+// AMAZON_MOD_BEGIN vxworks
+#if defined(__VXWORKS__)
+#include <ioLib.h>
+extern "C" int 	gethostname (char *name, size_t nameLen);
+
+//Note: Static casts on errors for gcc 4.8
+#ifdef NONE
+#undef NONE
+#endif
+
+#endif
+// AMAZON_MOD_END vxworks
+
 #if defined(ASIO_WINDOWS) || defined(__CYGWIN__) \
   || defined(__MACH__) && defined(__APPLE__)
 # if defined(ASIO_HAS_PTHREADS)
@@ -143,14 +156,16 @@ socket_type sync_accept(socket_type s, state_type state,
       return new_socket;
 
     // Operation failed.
-    if (ec == asio::error::would_block
-        || ec == asio::error::try_again)
+    // AMAZON_MOD_BEGIN vxworks
+    if (ec == static_cast<asio::error_code>(asio::error::would_block)
+        || ec == static_cast<asio::error_code>(asio::error::try_again))
+    // AMAZON_MOD_END vxworks
     {
       if (state & user_set_non_blocking)
         return invalid_socket;
       // Fall through to retry operation.
     }
-    else if (ec == asio::error::connection_aborted)
+    else if (ec == static_cast<asio::error_code>(asio::error::connection_aborted)) // AMAZON_MOD_ONELINE vxworks
     {
       if (state & enable_connection_aborted)
         return invalid_socket;
@@ -234,18 +249,20 @@ bool non_blocking_accept(socket_type s,
       return true;
 
     // Retry operation if interrupted by signal.
-    if (ec == asio::error::interrupted)
+    if (ec == static_cast<asio::error_code>(asio::error::interrupted)) // AMAZON_MOD_ONELINE vxworks
       continue;
 
     // Operation failed.
-    if (ec == asio::error::would_block
-        || ec == asio::error::try_again)
+    // AMAZON_MOD_BEGIN vxworks
+    if (ec == static_cast<asio::error_code>(asio::error::would_block)
+        || ec == static_cast<asio::error_code>(asio::error::try_again))
+        // AMAZON_MOD_END vxworks
     {
       if (state & user_set_non_blocking)
         return true;
       // Fall through to retry operation.
     }
-    else if (ec == asio::error::connection_aborted)
+    else if (ec == static_cast<asio::error_code>(asio::error::connection_aborted)) // AMAZON_MOD_ONELINE vxworks
     {
       if (state & enable_connection_aborted)
         return true;
@@ -319,8 +336,10 @@ int close(socket_type s, state_type& state,
 #endif // defined(ASIO_WINDOWS) || defined(__CYGWIN__)
 
     if (result != 0
-        && (ec == asio::error::would_block
-          || ec == asio::error::try_again))
+        // AMAZON_MOD_BEGIN vxworks
+        && (ec == static_cast<asio::error_code>(asio::error::would_block)
+          || ec == static_cast<asio::error_code>(asio::error::try_again)))
+        // AMAZON_MOD_END vxworks
     {
       // According to UNIX Network Programming Vol. 1, it is possible for
       // close() to fail with EWOULDBLOCK under certain circumstances. What
@@ -486,7 +505,7 @@ int connect(socket_type s, const socket_addr_type* addr,
   if (result == 0)
     ec = asio::error_code();
 #if defined(__linux__)
-  else if (ec == asio::error::try_again)
+  else if (ec == static_cast<asio::error_code>(asio::error::try_again)) // AMAZON_MOD_ONELINE vxworks
     ec = asio::error::no_buffer_space;
 #endif // defined(__linux__)
   return result;
@@ -497,8 +516,10 @@ void sync_connect(socket_type s, const socket_addr_type* addr,
 {
   // Perform the connect operation.
   socket_ops::connect(s, addr, addrlen, ec);
-  if (ec != asio::error::in_progress
-      && ec != asio::error::would_block)
+  // AMAZON_MOD_BEGIN vxworks
+  if (ec != static_cast<asio::error_code>(asio::error::in_progress)
+      && ec != static_cast<asio::error_code>(asio::error::would_block))
+  // AMAZON_MOD_END vxworks
   {
     // The connect operation finished immediately.
     return;
@@ -562,7 +583,8 @@ bool non_blocking_connect(socket_type s, asio::error_code& ec)
   // get spurious readiness notifications from the reactor.
 #if defined(ASIO_WINDOWS) \
   || defined(__CYGWIN__) \
-  || defined(__SYMBIAN32__)
+  || defined(__SYMBIAN32__) \
+  || defined(__VXWORKS__) // AMAZON_MOD_ONELINE vxworks
   fd_set write_fds;
   FD_ZERO(&write_fds);
   FD_SET(s, &write_fds);
@@ -611,7 +633,7 @@ bool non_blocking_connect(socket_type s, asio::error_code& ec)
 int socketpair(int af, int type, int protocol,
     socket_type sv[2], asio::error_code& ec)
 {
-#if defined(ASIO_WINDOWS) || defined(__CYGWIN__)
+#if defined(ASIO_WINDOWS) || defined(__CYGWIN__) || defined(__VXWORKS__) // AMAZON_MOD_ONELINE vxworks
   (void)(af);
   (void)(type);
   (void)(protocol);
@@ -822,8 +844,10 @@ size_t sync_recv(socket_type s, state_type state, buf* bufs,
 
     // Operation failed.
     if ((state & user_set_non_blocking)
-        || (ec != asio::error::would_block
-          && ec != asio::error::try_again))
+      // AMAZON_MOD_BEGIN vxworks
+        || (ec != static_cast<asio::error_code>(asio::error::would_block)
+          && ec != static_cast<asio::error_code>(asio::error::try_again)))
+      // AMAZON_MOD_END vxworks
       return 0;
 
     // Wait for socket to become ready.
@@ -879,12 +903,14 @@ bool non_blocking_recv(socket_type s,
     }
 
     // Retry operation if interrupted by signal.
-    if (ec == asio::error::interrupted)
+    if (ec == static_cast<asio::error_code>(asio::error::interrupted)) // AMAZON_MOD_ONELINE vxworks
       continue;
 
     // Check if we need to run the operation again.
-    if (ec == asio::error::would_block
-        || ec == asio::error::try_again)
+    // AMAZON_MOD_BEGIN vxworks
+    if (ec == static_cast<asio::error_code>(asio::error::would_block)
+        || ec == static_cast<asio::error_code>(asio::error::try_again))
+    // AMAZON_MOD_END vxworks
       return false;
 
     // Operation is complete.
@@ -961,8 +987,10 @@ size_t sync_recvfrom(socket_type s, state_type state, buf* bufs,
 
     // Operation failed.
     if ((state & user_set_non_blocking)
-        || (ec != asio::error::would_block
-          && ec != asio::error::try_again))
+        // AMAZON_MOD_BEGIN vxworks
+        || (ec != static_cast<asio::error_code>(asio::error::would_block)
+          && ec != static_cast<asio::error_code>(asio::error::try_again)))
+        // AMAZON_MOD_END vxworks
       return 0;
 
     // Wait for socket to become ready.
@@ -1005,12 +1033,14 @@ bool non_blocking_recvfrom(socket_type s,
         s, bufs, count, flags, addr, addrlen, ec);
 
     // Retry operation if interrupted by signal.
-    if (ec == asio::error::interrupted)
+    if (ec == static_cast<asio::error_code>(asio::error::interrupted)) // AMAZON_MOD_ONELINE vxworks
       continue;
 
     // Check if we need to run the operation again.
-    if (ec == asio::error::would_block
-        || ec == asio::error::try_again)
+    // AMAZON_MOD_BEGIN vxworks
+    if (ec == static_cast<asio::error_code>(asio::error::would_block)
+        || ec == static_cast<asio::error_code>(asio::error::try_again))
+    // AMAZON_MOD_END vxworks
       return false;
 
     // Operation is complete.
@@ -1074,8 +1104,10 @@ size_t sync_recvmsg(socket_type s, state_type state,
 
     // Operation failed.
     if ((state & user_set_non_blocking)
-        || (ec != asio::error::would_block
-          && ec != asio::error::try_again))
+        // AMAZON_MOD_BEGIN vxworks
+        || (ec != static_cast<asio::error_code>(asio::error::would_block)
+          && ec != static_cast<asio::error_code>(asio::error::try_again)))
+        // AMAZON_MOD_END vxworks
       return 0;
 
     // Wait for socket to become ready.
@@ -1117,12 +1149,14 @@ bool non_blocking_recvmsg(socket_type s,
         s, bufs, count, in_flags, out_flags, ec);
 
     // Retry operation if interrupted by signal.
-    if (ec == asio::error::interrupted)
+    if (ec == static_cast<asio::error_code>(asio::error::interrupted)) // AMAZON_MOD_ONELINE vxworks
       continue;
 
     // Check if we need to run the operation again.
-    if (ec == asio::error::would_block
-        || ec == asio::error::try_again)
+        // AMAZON_MOD_BEGIN vxworks
+    if (ec == static_cast<asio::error_code>(asio::error::would_block)
+        || ec == static_cast<asio::error_code>(asio::error::try_again))
+        // AMAZON_MOD_END vxworks
       return false;
 
     // Operation is complete.
@@ -1201,8 +1235,10 @@ size_t sync_send(socket_type s, state_type state, const buf* bufs,
 
     // Operation failed.
     if ((state & user_set_non_blocking)
-        || (ec != asio::error::would_block
-          && ec != asio::error::try_again))
+        // AMAZON_MOD_BEGIN vxworks
+        || (ec != static_cast<asio::error_code>(asio::error::would_block)
+          && ec != static_cast<asio::error_code>(asio::error::try_again)))
+        // AMAZON_MOD_END vxworks
       return 0;
 
     // Wait for socket to become ready.
@@ -1243,12 +1279,14 @@ bool non_blocking_send(socket_type s,
     signed_size_type bytes = socket_ops::send(s, bufs, count, flags, ec);
 
     // Retry operation if interrupted by signal.
-    if (ec == asio::error::interrupted)
+    if (ec == static_cast<asio::error_code>(asio::error::interrupted)) // AMAZON_MOD_ONELINE vxworks
       continue;
 
     // Check if we need to run the operation again.
-    if (ec == asio::error::would_block
-        || ec == asio::error::try_again)
+        // AMAZON_MOD_BEGIN vxworks
+    if (ec == static_cast<asio::error_code>(asio::error::would_block)
+        || ec == static_cast<asio::error_code>(asio::error::try_again))
+        // AMAZON_MOD_END vxworks
       return false;
 
     // Operation is complete.
@@ -1325,8 +1363,10 @@ size_t sync_sendto(socket_type s, state_type state, const buf* bufs,
 
     // Operation failed.
     if ((state & user_set_non_blocking)
-        || (ec != asio::error::would_block
-          && ec != asio::error::try_again))
+        // AMAZON_MOD_BEGIN vxworks
+        || (ec != static_cast<asio::error_code>(asio::error::would_block)
+          && ec != static_cast<asio::error_code>(asio::error::try_again)))
+        // AMAZON_MOD_END vxworks
       return 0;
 
     // Wait for socket to become ready.
@@ -1349,12 +1389,14 @@ bool non_blocking_sendto(socket_type s,
         s, bufs, count, flags, addr, addrlen, ec);
 
     // Retry operation if interrupted by signal.
-    if (ec == asio::error::interrupted)
+    if (ec == static_cast<asio::error_code>(asio::error::interrupted)) // AMAZON_MOD_ONELINE vxworks
       continue;
 
     // Check if we need to run the operation again.
-    if (ec == asio::error::would_block
-        || ec == asio::error::try_again)
+        // AMAZON_MOD_BEGIN vxworks
+    if (ec == static_cast<asio::error_code>(asio::error::would_block)
+        || ec == static_cast<asio::error_code>(asio::error::try_again))
+        // AMAZON_MOD_END vxworks
       return false;
 
     // Operation is complete.
@@ -1794,7 +1836,8 @@ int poll_read(socket_type s, state_type state, asio::error_code& ec)
 
 #if defined(ASIO_WINDOWS) \
   || defined(__CYGWIN__) \
-  || defined(__SYMBIAN32__)
+  || defined(__SYMBIAN32__) \
+  || defined(__VXWORKS__) // AMAZON_MOD_ONELINE vxworks
   fd_set fds;
   FD_ZERO(&fds);
   FD_SET(s, &fds);
@@ -1835,7 +1878,8 @@ int poll_write(socket_type s, state_type state, asio::error_code& ec)
 
 #if defined(ASIO_WINDOWS) \
   || defined(__CYGWIN__) \
-  || defined(__SYMBIAN32__)
+  || defined(__SYMBIAN32__) \
+  || defined(__VXWORKS__) // AMAZON_MOD_ONELINE vxworks
   fd_set fds;
   FD_ZERO(&fds);
   FD_SET(s, &fds);
@@ -1876,7 +1920,8 @@ int poll_connect(socket_type s, asio::error_code& ec)
 
 #if defined(ASIO_WINDOWS) \
   || defined(__CYGWIN__) \
-  || defined(__SYMBIAN32__)
+  || defined(__SYMBIAN32__) \
+  || defined(__VXWORKS__) // AMAZON_MOD_ONELINE vxworks
   fd_set write_fds;
   FD_ZERO(&write_fds);
   FD_SET(s, &write_fds);
@@ -2939,13 +2984,15 @@ inline int getaddrinfo_emulation(const char* host, const char* service,
       }
       freeaddrinfo_emulation(aihead);
       gai_free(canon);
-      if (ec == asio::error::host_not_found)
+      // AMAZON_MOD_BEGIN vxworks
+      if (ec == static_cast<asio::error_code>(asio::error::host_not_found))
         return EAI_NONAME;
-      if (ec == asio::error::host_not_found_try_again)
+      if (ec == static_cast<asio::error_code>(asio::error::host_not_found_try_again))
         return EAI_AGAIN;
-      if (ec == asio::error::no_recovery)
+      if (ec == static_cast<asio::error_code>(asio::error::no_recovery))
         return EAI_FAIL;
-      if (ec == asio::error::no_data)
+      if (ec == static_cast<asio::error_code>(asio::error::no_data))
+      // AMAZON_MOD_END vxworks
         return EAI_NONAME;
       return EAI_NONAME;
     }

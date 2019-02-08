@@ -22,6 +22,11 @@
 # define ASIO_DISABLE_BOOST_STATIC_CONSTANT 1
 # define ASIO_DISABLE_BOOST_THROW_EXCEPTION 1
 # define ASIO_DISABLE_BOOST_WORKAROUND 1
+// AMAZON_MOD_BEGIN vxworks
+#ifdef __VXWORKS__
+# define ASIO_DISABLE_SERIAL_PORT 1
+#endif
+// AMAZON_MOD_END vxworks
 #else // defined(ASIO_STANDALONE)
 # include <boost/config.hpp>
 # include <boost/version.hpp>
@@ -640,7 +645,8 @@
    || defined(__FreeBSD__) \
    || defined(__NetBSD__) \
    || defined(__OpenBSD__) \
-   || defined(__linux__)
+   || defined(__linux__) \
+   || defined(__VXWORKS__) // AMAZON_MOD_ONELINE vxworks
 #   define ASIO_HAS_UNISTD_H 1
 #  endif
 # endif // !defined(ASIO_HAS_BOOST_CONFIG)
@@ -759,7 +765,8 @@
 # if !defined(ASIO_DISABLE_POSIX_STREAM_DESCRIPTOR)
 #  if !defined(ASIO_WINDOWS) \
   && !defined(ASIO_WINDOWS_RUNTIME) \
-  && !defined(__CYGWIN__)
+  && !defined(__CYGWIN__) \
+  && (defined(ASIO_HAS_DEV_POLL) || defined(ASIO_HAS_DEV_EPOLL)) // AMAZON_MOD_ONELINE vxworks
 #   define ASIO_HAS_POSIX_STREAM_DESCRIPTOR 1
 #  endif // !defined(ASIO_WINDOWS)
          //   && !defined(ASIO_WINDOWS_RUNTIME)
